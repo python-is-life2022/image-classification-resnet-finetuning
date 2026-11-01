@@ -10,7 +10,7 @@
 <img src="https://img.shields.io/badge/Keras-D00000?style=for-the-badge&logo=keras&logoColor=white" alt="Keras">
 <img src="https://img.shields.io/badge/OpenCV-5C3EE8?style=for-the-badge&logo=opencv&logoColor=white" alt="OpenCV">
 <img src="https://img.shields.io/badge/FiftyOne-FF6D04?style=for-the-badge" alt="FiftyOne">
-<img src="https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge" alt="License">
+<img src="https://img.shields.io/badge/License-Apache%202.0-22c55e?style=for-the-badge" alt="License">
 
 <h3>Recognize everyday objects live on your webcam</h3>
 <p>A <b>ResNet50</b> model adapted with <b>transfer learning</b> and <b>fine-tuning</b>, trained on <b>Open Images v7</b>.</p>
@@ -261,7 +261,7 @@ Open the notebook and run the cells from top to bottom.
 
 ## 📄 License
 
-Released under the [MIT License](LICENSE).
+Released under the [Apache License 2.0](LICENSE).
 
 <div align="center">
 
