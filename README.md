@@ -23,9 +23,9 @@
 
 <table align="center">
   <tr>
-    <td align="center"><h2>96</h2>target classes</td>
-    <td align="center"><h2>96k</h2>train images</td>
-    <td align="center"><h2>19k</h2>validation images</td>
+    <td align="center"><h2>30</h2>target classes</td>
+    <td align="center"><h2>30k</h2>train images</td>
+    <td align="center"><h2>6k</h2>validation images</td>
     <td align="center"><h2>ResNet50</h2>backbone</td>
   </tr>
 </table>
@@ -36,7 +36,7 @@
 
 ```mermaid
 flowchart LR
-    A["Open Images v7<br/>96 chosen classes"] -->|FiftyOne| B["Download<br/>96k train + 19k val"]
+    A["Open Images v7<br/>30 chosen classes"] -->|FiftyOne| B["Download<br/>30k train + 6k val"]
     B --> C["Crop objects<br/>OpenCV"]
     C --> D["Transfer learning<br/>frozen ResNet50"]
     D --> E["Fine-tuning<br/>unfreeze top layers"]
@@ -60,9 +60,9 @@ Progress  ▰▰▱▱▱▱▱▱▱▱   2 of 10 steps done
 | # | Step | Status |
 |:-:|------|:------:|
 | 1 | Environment: TensorFlow and Keras with GPU, OpenCV, FiftyOne (WSL2) | ✅ Done |
-| 2 | Select and validate 96 target classes | ✅ Done |
-| 3 | Download the train split (1,000 images per class, about 96,000 images) | ⏳ In progress |
-| 4 | Download the validation split (200 images per class, about 19,200 images) | 🔜 Next |
+| 2 | Select and validate 30 target classes | ✅ Done |
+| 3 | Download the train split (1,000 images per class, about 30,000 images) | ⏳ In progress |
+| 4 | Download the validation split (200 images per class, about 6,000 images) | 🔜 Next |
 | 5 | Crop the annotated objects into one folder per class (OpenCV) | 📋 Planned |
 | 6 | Check class balance | 📋 Planned |
 | 7 | Transfer learning: train a new head on a frozen ResNet50 | 📋 Planned |
@@ -72,85 +72,53 @@ Progress  ▰▰▱▱▱▱▱▱▱▱   2 of 10 steps done
 
 ## 🔖 Classes
 
-96 everyday objects that are likely to appear in front of a webcam. Names match the official Open Images class list exactly.
+30 everyday objects that are likely to appear in front of a webcam. Names match the official Open Images class list exactly.
 
 <details>
-<summary><b>💻 Electronics</b> (12)</summary>
+<summary><b>💻 Electronics</b> (8)</summary>
 <br/>
 
-`Mobile phone` `Laptop` `Camera` `Computer keyboard` `Computer mouse` `Headphones` `Tablet computer` `Computer monitor` `Television` `Remote control` `Microphone` `Calculator`
+`Mobile phone` `Laptop` `Computer keyboard` `Computer mouse` `Headphones` `Computer monitor` `Remote control` `Camera`
 
 </details>
 
 <details>
-<summary><b>✏️ Stationery and office</b> (9)</summary>
+<summary><b>✏️ Office items</b> (4)</summary>
 <br/>
 
-`Book` `Scissors` `Pen` `Ruler` `Stapler` `Eraser` `Pencil case` `Envelope` `Whiteboard`
+`Book` `Pen` `Scissors` `Calculator`
 
 </details>
 
 <details>
-<summary><b>🍽️ Kitchen and tableware</b> (12)</summary>
+<summary><b>🍽️ Kitchen and tableware</b> (8)</summary>
 <br/>
 
-`Mug` `Bottle` `Coffee cup` `Plate` `Bowl` `Spoon` `Fork` `Knife` `Teapot` `Kettle` `Wine glass` `Tin can`
+`Mug` `Bottle` `Coffee cup` `Plate` `Bowl` `Spoon` `Fork` `Knife`
 
 </details>
 
 <details>
-<summary><b>🍎 Fruit and vegetables</b> (15)</summary>
+<summary><b>🎒 Personal items</b> (4)</summary>
 <br/>
 
-`Grape` `Strawberry` `Pear` `Peach` `Pineapple` `Watermelon` `Mango` `Banana` `Apple` `Orange` `Lemon` `Tomato` `Carrot` `Cucumber` `Potato`
+`Glasses` `Watch` `Backpack` `Clock`
 
 </details>
 
 <details>
-<summary><b>🍕 Meals and fast food</b> (8)</summary>
+<summary><b>🍎 Fruit</b> (3)</summary>
 <br/>
 
-`Pizza` `Hamburger` `Hot dog` `French fries` `Sandwich` `Fast food` `Popcorn` `Salad`
+`Banana` `Apple` `Orange`
 
 </details>
 
 <details>
-<summary><b>🥐 Bakery and sweets</b> (9)</summary>
+<summary><b>🙋 People</b> (3)</summary>
 <br/>
 
-`Bread` `Bagel` `Pretzel` `Muffin` `Croissant` `Cake` `Cookie` `Candy` `Ice cream`
-
-</details>
-
-<details>
-<summary><b>🥤 Drinks</b> (6)</summary>
-<br/>
-
-`Milk` `Juice` `Tea` `Beer` `Wine` `Cocktail`
-
-</details>
-
-<details>
-<summary><b>🎒 Personal items</b> (10)</summary>
-<br/>
-
-`Glasses` `Clock` `Backpack` `Watch` `Sunglasses` `Hat` `Handbag` `Umbrella` `Toothbrush` `Towel`
-
-</details>
-
-<details>
-<summary><b>🏠 Home and decor</b> (7)</summary>
-<br/>
-
-`Lamp` `Picture frame` `Houseplant` `Vase` `Pillow` `Candle` `Mirror`
-
-</details>
-
-<details>
-<summary><b>🙋 People, pets and more</b> (8)</summary>
-<br/>
-
-`Person` `Chair` `Human face` `Human hand` `Cat` `Dog` `Teddy bear` `Dumbbell`
+`Person` `Human face` `Human hand`
 
 </details>
 
@@ -164,7 +132,7 @@ import fiftyone.zoo as foz
 
 train_ds = fo.Dataset("train_dataset", persistent=True)
 
-for i, label in enumerate(labels):            # the 96 class names
+for i, label in enumerate(labels):            # the 30 class names
     ds = foz.load_zoo_dataset(
         "open-images-v7",
         split="train",
@@ -182,9 +150,9 @@ for i, label in enumerate(labels):            # the 96 class names
 # max_samples=200 and dataset_name="validation_dataset".
 ```
 
-- The bounding boxes are used to **crop each annotated object** with OpenCV, which gives one folder per class. Only boxes of the 96 target classes are cropped. The folders are then loaded with `keras.utils.image_dataset_from_directory`.
+- The bounding boxes are used to **crop each annotated object** with OpenCV, which gives one folder per class. Only boxes of the 30 target classes are cropped. The folders are then loaded with `keras.utils.image_dataset_from_directory`.
 - The dataset is **not** stored in this repository because of its size. Run the notebook to download it. The first run fetches large metadata files (about 4.8 GB), and the images are cached in `~/fiftyone/open-images-v7`. If the download is interrupted, run the cell again: images that are already cached are not downloaded twice.
-- `max_samples` is the number of images **per class** (1,000 for train, 200 for validation), which gives about 96,000 train and 19,200 validation images. An image that contains several target classes can be selected more than once, and rare classes can have fewer images than the target. Class balance is checked after the download.
+- `max_samples` is the number of images **per class** (1,000 for train, 200 for validation), which gives about 30,000 train and 6,000 validation images. An image that contains several target classes can be selected more than once, and rare classes can have fewer images than the target. Class balance is checked after the download.
 - Open Images annotations are licensed under CC BY 4.0 and the images are listed as CC BY 2.0 by their authors. See the [official page](https://storage.googleapis.com/openimages/web/factsfigures_v7.html) for details.
 
 ## 🧠 Model
@@ -208,7 +176,7 @@ x = keras.applications.resnet50.preprocess_input(inputs)
 x = base(x, training=False)
 x = layers.GlobalAveragePooling2D()(x)
 x = layers.Dropout(0.3)(x)
-outputs = layers.Dense(96, activation="softmax")(x)
+outputs = layers.Dense(30, activation="softmax")(x)
 model = keras.Model(inputs, outputs)
 ```
 
@@ -252,7 +220,7 @@ Open the notebook and run the cells from top to bottom.
 - Train in WSL2 or Linux with an NVIDIA GPU. TensorFlow does not support GPUs on native Windows, but the trained model runs fine on the CPU there for the webcam demo.
 - Webcam access (`cv2.VideoCapture`) and `cv2.imshow` work best on native Windows or Linux, so run the live demo there.
 - Keep `~/fiftyone`, the cropped dataset, saved models (`.keras`) and `.env` files out of Git.
-- Plan for roughly 20 to 40 GB of free disk space for the image cache and the cropped dataset.
+- Plan for roughly 10 to 15 GB of free disk space for the metadata, the image cache and the cropped dataset.
 - On WSL2, the default memory limit is half of your RAM. If WSL disconnects during the download, raise it in `C:\Users\<you>\.wslconfig` (for example `memory=11GB`) and run `wsl --shutdown`.
 
 ## 🙏 Acknowledgements
