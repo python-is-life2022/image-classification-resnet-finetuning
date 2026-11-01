@@ -25,18 +25,18 @@
   <tr>
     <td align="center"><h2>30</h2>target classes</td>
     <td align="center"><h2>30k</h2>train images</td>
-    <td align="center"><h2>6k</h2>validation images</td>
+    <td align="center"><h2>9k</h2>validation images</td>
     <td align="center"><h2>ResNet50</h2>backbone</td>
   </tr>
 </table>
 
-> **Status:** work in progress. The dataset is being prepared; training and the live webcam demo come next. The image counts above come from the per-class download targets (1,000 train and 200 validation images per class).
+> **Status:** work in progress. The dataset is being prepared; training and the live webcam demo come next. The image counts above come from the per-class download targets (1,000 train and 300 validation images per class).
 
 ## 🧭 Pipeline
 
 ```mermaid
 flowchart LR
-    A["Open Images v7<br/>30 chosen classes"] -->|FiftyOne| B["Download<br/>30k train + 6k val"]
+    A["Open Images v7<br/>30 chosen classes"] -->|FiftyOne| B["Download<br/>30k train + 9k val"]
     B --> C["Crop objects<br/>OpenCV"]
     C --> D["Transfer learning<br/>frozen ResNet50"]
     D --> E["Fine-tuning<br/>unfreeze top layers"]
@@ -57,18 +57,67 @@ flowchart LR
 Progress  ▰▰▱▱▱▱▱▱▱▱   2 of 10 steps done
 ```
 
-| # | Step | Status |
-|:-:|------|:------:|
-| 1 | Environment: TensorFlow and Keras with GPU, OpenCV, FiftyOne (WSL2) | ✅ Done |
-| 2 | Select and validate 30 target classes | ✅ Done |
-| 3 | Download the train split (1,000 images per class, about 30,000 images) | ⏳ In progress |
-| 4 | Download the validation split (200 images per class, about 6,000 images) | 🔜 Next |
-| 5 | Crop the annotated objects into one folder per class (OpenCV) | 📋 Planned |
-| 6 | Check class balance | 📋 Planned |
-| 7 | Transfer learning: train a new head on a frozen ResNet50 | 📋 Planned |
-| 8 | Fine-tuning: unfreeze the top layers with a low learning rate | 📋 Planned |
-| 9 | Evaluate (accuracy, top-3 accuracy, confusion matrix) | 📋 Planned |
-| 10 | Live webcam demo with OpenCV | 📋 Planned |
+<table width="100%">
+  <thead>
+    <tr>
+      <th align="center" width="6%">#</th>
+      <th align="left">Step</th>
+      <th align="center" width="18%">Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center">1</td>
+      <td>Environment: TensorFlow and Keras with GPU, OpenCV, FiftyOne (WSL2)</td>
+      <td align="center">✅ Done</td>
+    </tr>
+    <tr>
+      <td align="center">2</td>
+      <td>Select and validate 30 target classes</td>
+      <td align="center">✅ Done</td>
+    </tr>
+    <tr>
+      <td align="center">3</td>
+      <td>Download the train split (1,000 images per class, about 30,000 images)</td>
+      <td align="center">⏳ In progress</td>
+    </tr>
+    <tr>
+      <td align="center">4</td>
+      <td>Download the validation split (300 images per class, about 9,000 images)</td>
+      <td align="center">🔜 Next</td>
+    </tr>
+    <tr>
+      <td align="center">5</td>
+      <td>Crop the annotated objects into one folder per class (OpenCV)</td>
+      <td align="center">📋 Planned</td>
+    </tr>
+    <tr>
+      <td align="center">6</td>
+      <td>Check class balance</td>
+      <td align="center">📋 Planned</td>
+    </tr>
+    <tr>
+      <td align="center">7</td>
+      <td>Transfer learning: train a new head on a frozen ResNet50</td>
+      <td align="center">📋 Planned</td>
+    </tr>
+    <tr>
+      <td align="center">8</td>
+      <td>Fine-tuning: unfreeze the top layers with a low learning rate</td>
+      <td align="center">📋 Planned</td>
+    </tr>
+    <tr>
+      <td align="center">9</td>
+      <td>Evaluate (accuracy, top-3 accuracy, confusion matrix)</td>
+      <td align="center">📋 Planned</td>
+    </tr>
+    <tr>
+      <td align="center">10</td>
+      <td>Live webcam demo with OpenCV</td>
+      <td align="center">📋 Planned</td>
+    </tr>
+  </tbody>
+</table>
 
 ## 🔖 Classes
 
@@ -145,14 +194,31 @@ for i, label in enumerate(labels):            # the 30 class names
     )
     train_ds.add_samples(ds)
     ds.delete()
+```
 
-# The validation split uses the same loop with split="validation",
-# max_samples=200 and dataset_name="validation_dataset".
+The validation split is downloaded the same way, with 300 images per class:
+
+```python
+val_ds = fo.Dataset("validation_dataset", persistent=True)
+
+for i, label in enumerate(labels):
+    ds = foz.load_zoo_dataset(
+        "open-images-v7",
+        split="validation",
+        classes=[label],
+        label_types=["detections"],
+        max_samples=300,                      # images per class
+        shuffle=True,
+        seed=i,
+        dataset_name=f"tmp_val_{i}",
+    )
+    val_ds.add_samples(ds)
+    ds.delete()
 ```
 
 - The bounding boxes are used to **crop each annotated object** with OpenCV, which gives one folder per class. Only boxes of the 30 target classes are cropped. The folders are then loaded with `keras.utils.image_dataset_from_directory`.
 - The dataset is **not** stored in this repository because of its size. Run the notebook to download it. The first run fetches large metadata files (about 4.8 GB), and the images are cached in `~/fiftyone/open-images-v7`. If the download is interrupted, run the cell again: images that are already cached are not downloaded twice.
-- `max_samples` is the number of images **per class** (1,000 for train, 200 for validation), which gives about 30,000 train and 6,000 validation images. An image that contains several target classes can be selected more than once, and rare classes can have fewer images than the target. Class balance is checked after the download.
+- `max_samples` is the number of images **per class** (1,000 for train, 300 for validation), which gives about 30,000 train and 9,000 validation images. An image that contains several target classes can be selected more than once, and rare classes can have fewer images than the target. Class balance is checked after the download.
 - Open Images annotations are licensed under CC BY 4.0 and the images are listed as CC BY 2.0 by their authors. See the [official page](https://storage.googleapis.com/openimages/web/factsfigures_v7.html) for details.
 
 ## 🧠 Model
