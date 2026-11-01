@@ -10,18 +10,22 @@ Claude
 
 
 
+
+
+
+
+
 Readme · MD
 <div align="center">
 <img src="assets/banner.svg" alt="Webcam Object Recognition banner" width="100%">
 <br/>
-![Status](https://img.shields.io/badge/status-work%20in%20progress-f59e0b?style=for-the-badge)
-![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![TensorFlow](https://img.shields.io/badge/TensorFlow-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white)
-![Keras](https://img.shields.io/badge/Keras-D00000?style=for-the-badge&logo=keras&logoColor=white)
-![OpenCV](https://img.shields.io/badge/OpenCV-5C3EE8?style=for-the-badge&logo=opencv&logoColor=white)
-![FiftyOne](https://img.shields.io/badge/FiftyOne-FF6D04?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge)
- 
+<img src="https://img.shields.io/badge/status-work%20in%20progress-f59e0b?style=for-the-badge" alt="Status">
+<img src="https://img.shields.io/badge/Python-3.12%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+<img src="https://img.shields.io/badge/TensorFlow-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white" alt="TensorFlow">
+<img src="https://img.shields.io/badge/Keras-D00000?style=for-the-badge&logo=keras&logoColor=white" alt="Keras">
+<img src="https://img.shields.io/badge/OpenCV-5C3EE8?style=for-the-badge&logo=opencv&logoColor=white" alt="OpenCV">
+<img src="https://img.shields.io/badge/FiftyOne-FF6D04?style=for-the-badge" alt="FiftyOne">
+<img src="https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge" alt="License">
 ### Recognize everyday objects live on your webcam
 A **ResNet50** model adapted with **transfer learning** and **fine-tuning**, trained on **Open Images v7**.
  
@@ -226,10 +230,12 @@ Open the notebook and run the cells from top to bottom.
 .
 ├── assets/
 │   └── banner.svg
-├── <your-notebook>.ipynb      # dataset preparation (current stage)
+├── src/
+│   └── connect_to_webcam.py   # live webcam script (OpenCV)
 ├── .gitignore
 ├── LICENSE
-└── README.md
+├── README.md
+└── webcam_resnet_transfer_learning.ipynb   # dataset preparation and training (current stage)
 ```
  
 ## 📝 Notes
