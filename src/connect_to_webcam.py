@@ -1,4 +1,7 @@
 import cv2
+import tensorflow as tf
+from tensorflow import keras
+
 
 capture = cv2.VideoCapture(0)
 if not capture.isOpened():
