@@ -24,19 +24,19 @@
 <table align="center">
   <tr>
     <td align="center"><h2>30</h2>target classes</td>
-    <td align="center"><h2>30k</h2>train images</td>
-    <td align="center"><h2>9k</h2>validation images</td>
+    <td align="center"><h2>26k</h2>train images</td>
+    <td align="center"><h2>2.7k</h2>validation images</td>
     <td align="center"><h2>ResNet50</h2>backbone</td>
   </tr>
 </table>
 
-> **Status:** work in progress. The dataset is being prepared; training and the live webcam demo come next. The image counts above come from the per-class download targets (1,000 train and 300 validation images per class).
+> **Status:** work in progress. The dataset is downloaded; cropping, training and the live webcam demo come next. The image counts above are the real numbers of downloaded images (the targets were 1,000 train and 300 validation images per class, but some classes have fewer images available).
 
 ## 🧭 Pipeline
 
 ```mermaid
 flowchart LR
-    A["Open Images v7<br/>30 chosen classes"] -->|FiftyOne| B["Download<br/>30k train + 9k val"]
+    A["Open Images v7<br/>30 chosen classes"] -->|FiftyOne| B["Download<br/>26k train + 2.7k val"]
     B --> C["Crop objects<br/>OpenCV"]
     C --> D["Transfer learning<br/>frozen ResNet50"]
     D --> E["Fine-tuning<br/>unfreeze top layers"]
@@ -46,15 +46,14 @@ flowchart LR
     classDef done fill:#16a34a,stroke:#15803d,color:#fff;
     classDef wip fill:#f59e0b,stroke:#b45309,color:#fff;
     classDef todo fill:#334155,stroke:#475569,color:#e2e8f0;
-    class A done;
-    class B wip;
+    class A,B done;
     class C,D,E,F,G todo;
 ```
 
 ## 📍 Roadmap
 
 ```text
-Progress  ▰▰▱▱▱▱▱▱▱▱   2 of 10 steps done
+Progress  ▰▰▰▰▱▱▱▱▱▱   4 of 10 steps done
 ```
 
 <table width="100%">
@@ -78,18 +77,18 @@ Progress  ▰▰▱▱▱▱▱▱▱▱   2 of 10 steps done
     </tr>
     <tr>
       <td align="center">3</td>
-      <td>Download the train split (1,000 images per class, about 30,000 images)</td>
-      <td align="center">⏳ In progress</td>
+      <td>Download the train split (up to 1,000 images per class, 26,142 images)</td>
+      <td align="center">✅ Done</td>
     </tr>
     <tr>
       <td align="center">4</td>
-      <td>Download the validation split (300 images per class, about 9,000 images)</td>
-      <td align="center">🔜 Next</td>
+      <td>Download the validation split (up to 300 images per class, 2,673 images)</td>
+      <td align="center">✅ Done</td>
     </tr>
     <tr>
       <td align="center">5</td>
       <td>Crop the annotated objects into one folder per class (OpenCV)</td>
-      <td align="center">📋 Planned</td>
+      <td align="center">🔜 Next</td>
     </tr>
     <tr>
       <td align="center">6</td>
@@ -196,7 +195,7 @@ for i, label in enumerate(labels):            # the 30 class names
     ds.delete()
 ```
 
-The validation split is downloaded the same way, with 300 images per class:
+The validation split is downloaded the same way, with up to 300 images per class:
 
 ```python
 val_ds = fo.Dataset("validation_dataset", persistent=True)
@@ -218,7 +217,8 @@ for i, label in enumerate(labels):
 
 - The bounding boxes are used to **crop each annotated object** with OpenCV, which gives one folder per class. Only boxes of the 30 target classes are cropped. The folders are then loaded with `keras.utils.image_dataset_from_directory`.
 - The dataset is **not** stored in this repository because of its size. Run the notebook to download it. The first run fetches large metadata files (about 4.8 GB), and the images are cached in `~/fiftyone/open-images-v7`. If the download is interrupted, run the cell again: images that are already cached are not downloaded twice.
-- `max_samples` is the number of images **per class** (1,000 for train, 300 for validation), which gives about 30,000 train and 9,000 validation images. An image that contains several target classes can be selected more than once, and rare classes can have fewer images than the target. Class balance is checked after the download.
+- `max_samples` is the number of images **per class** (up to 1,000 for train, up to 300 for validation). Some classes have fewer images available, especially in the much smaller validation split, so the final datasets have 26,142 train and 2,673 validation images. An image that contains several target classes can be selected more than once. Class balance is checked after the download.
+- Both datasets are created with `persistent=True`, so later sessions only need `fo.load_dataset("train_dataset")` and `fo.load_dataset("validation_dataset")`. Do not run the download cells again: they delete and rebuild the datasets.
 - Open Images annotations are licensed under CC BY 4.0 and the images are listed as CC BY 2.0 by their authors. See the [official page](https://storage.googleapis.com/openimages/web/factsfigures_v7.html) for details.
 
 ## 🧠 Model
