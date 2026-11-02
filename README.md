@@ -327,6 +327,26 @@ print(train_y.shape, val_y.shape)                  # (22388, 30) (2093, 30)
 
 Some objects can still be missing from the labels: FiftyOne only loaded the boxes of the class requested for each download, so a class that was never requested for an image stays `0.0`.
 
+### Prepare the TensorFlow data pipeline
+
+The `tf.data` pipeline loads and preprocesses images, then groups them into batches for efficient training.
+
+- `load_img`: reads, decodes and resizes each image to `224 × 224`.
+- `make_ds`: creates datasets from image paths and multi-hot labels.
+- `shuffle(10_000)`: shuffles the training data.
+- `map()`, `batch(32)` and `prefetch(AUTOTUNE)`: parallelize preprocessing, group samples into batches and improve data loading efficiency.
+
+### Create training and validation datasets
+
+```python
+train_tf = make_ds(train_paths, train_y, True)
+val_tf = make_ds(val_paths, val_y, False)
+```
+
+The training dataset is shuffled, while the validation dataset keeps its original order. Both use the same preprocessing and batching pipeline.
+
+---
+
 ## 🧠 Model
 
 The model starts from **ResNet50 pretrained on ImageNet** (`keras.applications`) and is adapted in two phases.
