@@ -221,6 +221,14 @@ for i, label in enumerate(labels):
 - Both datasets are created with `persistent=True`, so later sessions only need `fo.load_dataset("train_dataset")` and `fo.load_dataset("validation_dataset")`. Do not run the download cells again: they delete and rebuild the datasets.
 - Open Images annotations are licensed under CC BY 4.0 and the images are listed as CC BY 2.0 by their authors. See the [official page](https://storage.googleapis.com/openimages/web/factsfigures_v7.html) for details.
 
+To look at the images and their bounding boxes, open the dataset in the FiftyOne app:
+
+```python
+session = fo.launch_app(train_ds)     # opens in the notebook or at http://localhost:5151
+```
+
+The app shows every image with its boxes and class names, and the sidebar can filter the images by label (for example only `Laptop`). This step is optional and only meant for exploring the data. Close the app with `session.close()`.
+
 ## 🧠 Model
 
 The model starts from **ResNet50 pretrained on ImageNet** (`keras.applications`) and is adapted in two phases.
