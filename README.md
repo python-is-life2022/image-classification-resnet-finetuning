@@ -229,6 +229,54 @@ session = fo.launch_app(train_ds)     # opens in the notebook or at http://local
 
 The app shows every image with its boxes and class names, and the sidebar can filter the images by label (for example only `Laptop`). This step is optional and only meant for exploring the data. Close the app with `session.close()`.
 
+### Look at one sample
+
+Before building the labels, it helps to see what one sample contains. Only the `ground_truth` field is read, which is faster:
+
+```python
+view = train_ds.select_fields("ground_truth")
+sample = view.first()
+print(sample.filepath)
+print(sample.ground_truth.detections)
+print([d.label for d in sample.ground_truth.detections])
+```
+
+- `select_fields("ground_truth")` reads only the `ground_truth` field of each image.
+- `view.first()` takes the first image of the view.
+- `sample.ground_truth.detections` is the list of boxes of this image. Each box has a `label` (class name) and a `bounding_box` (`[x, y, width, height]`, relative values between 0 and 1).
+
+One image can have several boxes, and several boxes can have the same class. Only the class names are needed for the labels, the box coordinates are not used by the classifier.
+
+### Build multi-hot labels
+
+The objects are **not** cropped for this labeling. The model looks at the **whole image** and predicts which of the 30 classes are present (multi-label classification).
+
+```python
+import numpy as np
+
+labels_index = {name: i for i, name in enumerate(labels)}   # class name -> position, e.g. Mobile phone = 0
+
+def build_array(view):
+    paths, targets = [], []
+    for sample in view.select_fields("ground_truth").iter_samples():
+        multi_hot = np.zeros(len(labels), dtype="float32")
+        for d in sample.ground_truth.detections:
+            multi_hot[labels_index[d.label]] = 1.0
+        paths.append(sample.filepath)
+        targets.append(multi_hot)
+    return paths, np.array(targets)
+
+train_paths, train_y = build_array(train_view)
+val_paths, val_y = build_array(val_view)
+print(train_y.shape, val_y.shape)     # (26142, 30) (2673, 30)
+```
+
+- `labels_index` maps every class name to its position in `labels`. The order of `labels` must not change after training.
+- `build_array` creates, for every image, a vector of 30 zeros and sets the position of each class that appears in the image to `1.0`.
+- The result is `train_y` with shape `(26142, 30)` and `val_y` with shape `(2673, 30)`: one row per image, one column per class.
+
+This is **multi-hot** encoding: an image with a phone and a laptop has two ones in its vector. Because several classes can be true at the same time, the model uses a `sigmoid` output and the `binary_crossentropy` loss instead of `softmax`.
+
 ## 🧠 Model
 
 The model starts from **ResNet50 pretrained on ImageNet** (`keras.applications`) and is adapted in two phases.
