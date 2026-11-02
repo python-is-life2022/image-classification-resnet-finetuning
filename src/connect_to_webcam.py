@@ -1,7 +1,9 @@
 import cv2
+import numpy as np
 import tensorflow as tf
-from tensorflow import keras
+from keras import models
 
+model = models.load_model()
 
 capture = cv2.VideoCapture(0)
 if not capture.isOpened():
