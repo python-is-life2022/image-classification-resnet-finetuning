@@ -24,41 +24,39 @@
 <table align="center">
   <tr>
     <td align="center"><h2>30</h2>target classes</td>
-    <td align="center"><h2>22k</h2>train images</td>
-    <td align="center"><h2>2.1k</h2>validation images</td>
+    <td align="center"><h2>26k</h2>train images</td>
+    <td align="center"><h2>2.7k</h2>validation images</td>
     <td align="center"><h2>ResNet50</h2>backbone</td>
   </tr>
 </table>
 
-> **Status:** work in progress. The dataset is downloaded and the multi-hot labels are ready; transfer learning, fine-tuning and the live webcam demo come next. The image counts above are unique images after merging duplicates (26,142 train and 2,673 validation images were downloaded, of which 22,388 and 2,093 are unique). The targets were 1,000 train and 300 validation images per class, but some classes have fewer images available.
+> **Status:** work in progress. The dataset is downloaded and the multi-hot labels are built; training and the live webcam demo come next. The image counts above are the real numbers of downloaded images (the targets were 1,000 train and 300 validation images per class, but some classes have fewer images available).
 
 ## 🧭 Pipeline
 
 ```mermaid
 flowchart LR
     A["Open Images v7<br/>30 chosen classes"] -->|FiftyOne| B["Download<br/>26k train + 2.7k val"]
-    B --> C["Keep 30 classes<br/>filtered views"]
-    C --> D["Multi-hot labels<br/>whole image"]
-    D --> E["Merge duplicates<br/>22k train + 2.1k val"]
-    E --> F["Transfer learning<br/>frozen ResNet50"]
-    F --> G["Fine-tuning<br/>unfreeze top layers"]
-    G --> H["Evaluate<br/>AUC, precision, recall"]
-    H --> I["Live webcam<br/>OpenCV"]
+    B --> C["Multi-hot labels<br/>whole images"]
+    C --> D["Transfer learning<br/>frozen ResNet50"]
+    D --> E["Fine-tuning<br/>unfreeze top layers"]
+    E --> F["Evaluate<br/>AUC, precision, recall"]
+    F --> G["Live webcam<br/>OpenCV"]
 
     classDef done fill:#16a34a,stroke:#15803d,color:#fff;
     classDef wip fill:#f59e0b,stroke:#b45309,color:#fff;
     classDef todo fill:#334155,stroke:#475569,color:#e2e8f0;
-    class A,B,C,D,E done;
-    class F,G,H,I todo;
+    class A,B,C done;
+    class D,E,F,G todo;
 ```
 
 ## 📍 Roadmap
 
-<div align="center">
+```text
+Progress  ▰▰▰▰▰▱▱▱▱▱   5 of 10 steps done
+```
 
-`Progress ▰▰▰▰▰▰▰▱▱▱▱ 7 of 11 steps done`
-
-<table align="center">
+<table width="100%">
   <thead>
     <tr>
       <th align="center" width="6%">#</th>
@@ -89,43 +87,36 @@ flowchart LR
     </tr>
     <tr>
       <td align="center">5</td>
-      <td>Keep only the 30 target classes (filtered FiftyOne views)</td>
+      <td>Keep only the 30 target classes and build multi-hot labels (one 30-value vector per image, no cropping)</td>
       <td align="center">✅ Done</td>
     </tr>
     <tr>
       <td align="center">6</td>
-      <td>Build multi-hot labels from the whole image (multi-label, no cropping)</td>
-      <td align="center">✅ Done</td>
-    </tr>
-    <tr>
-      <td align="center">7</td>
-      <td>Merge duplicate images (22,388 train and 2,093 validation unique images)</td>
-      <td align="center">✅ Done</td>
-    </tr>
-    <tr>
-      <td align="center">8</td>
-      <td>Transfer learning: input pipeline (tf.data) and a new sigmoid head on a frozen ResNet50</td>
+      <td>Check class balance (how often each class appears in the images)</td>
       <td align="center">🔜 Next</td>
     </tr>
     <tr>
-      <td align="center">9</td>
+      <td align="center">7</td>
+      <td>Transfer learning: train a new sigmoid head on a frozen ResNet50</td>
+      <td align="center">📋 Planned</td>
+    </tr>
+    <tr>
+      <td align="center">8</td>
       <td>Fine-tuning: unfreeze the top layers with a low learning rate</td>
       <td align="center">📋 Planned</td>
     </tr>
     <tr>
-      <td align="center">10</td>
+      <td align="center">9</td>
       <td>Evaluate (AUC, precision and recall per class)</td>
       <td align="center">📋 Planned</td>
     </tr>
     <tr>
-      <td align="center">11</td>
+      <td align="center">10</td>
       <td>Live webcam demo with OpenCV</td>
       <td align="center">📋 Planned</td>
     </tr>
   </tbody>
 </table>
-
-</div>
 
 ## 🔖 Classes
 
@@ -224,9 +215,34 @@ for i, label in enumerate(labels):
     ds.delete()
 ```
 
-- The objects are **not** cropped. The bounding boxes are only used to find which of the 30 target classes appear in each image, and the model looks at the **whole image** (multi-label classification, see below).
+The images carry the labels of every object that Open Images annotated, so we keep only the boxes of the 30 target classes and turn the labels of each image into a multi-hot vector:
+
+```python
+from fiftyone import ViewField as F
+import numpy as np
+
+train_view = train_ds.filter_labels("ground_truth", F("label").is_in(labels), only_matches=True)
+val_view = val_ds.filter_labels("ground_truth", F("label").is_in(labels), only_matches=True)
+
+labels_index = {name: i for i, name in enumerate(labels)}
+
+def build_array(view):
+    paths, targets = [], []
+    for sample in view.select_fields("ground_truth").iter_samples():
+        multi_hot = np.zeros(len(labels), dtype="float32")
+        for det in sample.ground_truth.detections:
+            multi_hot[labels_index[det.label]] = 1.0
+        paths.append(sample.filepath)
+        targets.append(multi_hot)
+    return paths, np.array(targets)
+
+train_paths, train_y = build_array(train_view)    # train_y shape: (26142, 30)
+val_paths, val_y = build_array(val_view)          # val_y shape: (2673, 30)
+```
+
+- The objects are **not cropped**. The model looks at the **whole image** and predicts which of the 30 classes are present (multi-label classification). Each image gets a vector of 30 values: `1` if the class appears in the image and `0` if not. The order of `labels` must not change after training. The box coordinates are not used by the classifier.
 - The dataset is **not** stored in this repository because of its size. Run the notebook to download it. The first run fetches large metadata files (about 4.8 GB), and the images are cached in `~/fiftyone/open-images-v7`. If the download is interrupted, run the cell again: images that are already cached are not downloaded twice.
-- `max_samples` is the number of images **per class** (up to 1,000 for train, up to 300 for validation). Some classes have fewer images available, especially in the much smaller validation split, so the downloaded datasets have 26,142 train and 2,673 validation samples. An image that contains several target classes can be selected more than once, so duplicates are merged after the labels are built (22,388 train and 2,093 validation unique images).
+- `max_samples` is the number of images **per class** (up to 1,000 for train, up to 300 for validation). Some classes have fewer images available, especially in the much smaller validation split, so the final datasets have 26,142 train and 2,673 validation images. An image that contains several target classes can be selected more than once. Class balance is checked before training.
 - Both datasets are created with `persistent=True`, so later sessions only need `fo.load_dataset("train_dataset")` and `fo.load_dataset("validation_dataset")`. Do not run the download cells again: they delete and rebuild the datasets.
 - Open Images annotations are licensed under CC BY 4.0 and the images are listed as CC BY 2.0 by their authors. See the [official page](https://storage.googleapis.com/openimages/web/factsfigures_v7.html) for details.
 
@@ -237,115 +253,6 @@ session = fo.launch_app(train_ds)     # opens in the notebook or at http://local
 ```
 
 The app shows every image with its boxes and class names, and the sidebar can filter the images by label (for example only `Laptop`). This step is optional and only meant for exploring the data. Close the app with `session.close()`.
-
-### Keep only the target classes
-
-The images carry the labels of every object that Open Images annotated, not only the 30 target classes (for example `Table` or `Clothing`). Two views keep only the boxes of the target classes:
-
-```python
-from fiftyone import ViewField as F
-
-train_view = train_ds.filter_labels("ground_truth", F("label").is_in(labels), only_matches=True)
-val_view = val_ds.filter_labels("ground_truth", F("label").is_in(labels), only_matches=True)
-print(len(train_view), len(val_view))     # 26142 2673
-```
-
-- `F("label").is_in(labels)` keeps a box only if its class is in the `labels` list.
-- `only_matches=True` drops images that have no box left after filtering.
-- A view does not copy or change the dataset on disk, it only filters what is shown.
-
-Both counts are the same as the full datasets, because every image was downloaded for at least one target class.
-
-### Look at one sample
-
-Before building the labels, it helps to see what one sample contains. Only the `ground_truth` field is read, which is faster:
-
-```python
-view = train_view.select_fields("ground_truth")
-sample = view.first()
-print(sample.filepath)
-print(sample.ground_truth.detections)
-print([d.label for d in sample.ground_truth.detections])
-```
-
-- `select_fields("ground_truth")` reads only the `ground_truth` field of each image.
-- `view.first()` takes the first image of the view.
-- `sample.ground_truth.detections` is the list of boxes of this image. Each box has a `label` (class name) and a `bounding_box` (`[x, y, width, height]`, relative values between 0 and 1).
-
-One image can have several boxes, and several boxes can have the same class. Only the class names are needed for the labels, the box coordinates are not used by the classifier.
-
-### Build multi-hot labels
-
-The objects are **not** cropped for this labeling. The model looks at the **whole image** and predicts which of the 30 classes are present (multi-label classification).
-
-```python
-import numpy as np
-
-labels_index = {name: i for i, name in enumerate(labels)}   # class name -> position, e.g. Mobile phone = 0
-
-def build_array(view):
-    paths, targets = [], []
-    for sample in view.select_fields("ground_truth").iter_samples():
-        multi_hot = np.zeros(len(labels), dtype="float32")
-        for d in sample.ground_truth.detections:
-            multi_hot[labels_index[d.label]] = 1.0
-        paths.append(sample.filepath)
-        targets.append(multi_hot)
-    return paths, np.array(targets)
-
-train_paths, train_y = build_array(train_view)
-val_paths, val_y = build_array(val_view)
-print(train_y.shape, val_y.shape)     # (26142, 30) (2673, 30)
-```
-
-- `labels_index` maps every class name to its position in `labels`. The order of `labels` must not change after training.
-- `build_array` creates, for every image, a vector of 30 zeros and sets the position of each class that appears in the image to `1.0`.
-- The result is `train_y` with shape `(26142, 30)` and `val_y` with shape `(2673, 30)`: one row per image, one column per class.
-
-This is **multi-hot** encoding: an image with a phone and a laptop has two ones in its vector. Because several classes can be true at the same time, the model uses a `sigmoid` output and the `binary_crossentropy` loss instead of `softmax`.
-
-### Merge duplicate images
-
-Each class was downloaded separately, so an image that contains several target classes can appear more than once in `train_paths`, each time with only one class set to `1.0`. The model would see the same image with different, incomplete labels. The rows of the same image are merged into one:
-
-```python
-def merge_by_path(paths, y):
-    merged = {}
-    for p, row in zip(paths, y):
-        merged[p] = np.maximum(merged[p], row) if p in merged else row.copy()
-    return list(merged.keys()), np.array(list(merged.values()))
-
-print(len(train_paths), len(set(train_paths)))     # total rows vs unique images
-train_paths, train_y = merge_by_path(train_paths, train_y)
-val_paths, val_y = merge_by_path(val_paths, val_y)
-print(train_y.shape, val_y.shape)                  # (22388, 30) (2093, 30)
-```
-
-- `merge_by_path` goes through all (path, label vector) pairs and keeps one row per image path.
-- `np.maximum(merged[p], row)` combines two label vectors of the same image: a class is `1.0` if it is `1.0` in any of them (logical OR).
-- After merging, `train_y` has shape `(22388, 30)` and `val_y` has shape `(2093, 30)`: one row per unique image.
-
-Some objects can still be missing from the labels: FiftyOne only loaded the boxes of the class requested for each download, so a class that was never requested for an image stays `0.0`.
-
-### Prepare the TensorFlow data pipeline
-
-The `tf.data` pipeline loads and preprocesses images, then groups them into batches for efficient training.
-
-- `load_img`: reads, decodes and resizes each image to `224 × 224`.
-- `make_ds`: creates datasets from image paths and multi-hot labels.
-- `shuffle(10_000)`: shuffles the training data.
-- `map()`, `batch(32)` and `prefetch(AUTOTUNE)`: parallelize preprocessing, group samples into batches and improve data loading efficiency.
-
-### Create training and validation datasets
-
-```python
-train_tf = make_ds(train_paths, train_y, True)
-val_tf = make_ds(val_paths, val_y, False)
-```
-
-The training dataset is shuffled, while the validation dataset keeps its original order. Both use the same preprocessing and batching pipeline.
-
----
 
 ## 🧠 Model
 
@@ -370,21 +277,21 @@ x = layers.GlobalAveragePooling2D()(x)
 x = layers.Dropout(0.3)(x)
 outputs = layers.Dense(30, activation="sigmoid")(x)     # one probability per class
 model = keras.Model(inputs, outputs)
-```
 
-The task is multi-label, so the loss is `binary_crossentropy`. The metrics are AUC, precision and recall, because plain accuracy is misleading when most labels are `0`:
-
-```python
 model.compile(
     optimizer=keras.optimizers.Adam(1e-3),
     loss="binary_crossentropy",
-    metrics=[keras.metrics.AUC(multi_label=True, name="auc"),
-             keras.metrics.Precision(name="precision"),
-             keras.metrics.Recall(name="recall")],
+    metrics=[
+        keras.metrics.AUC(multi_label=True, name="auc"),
+        keras.metrics.Precision(thresholds=0.5, name="precision"),
+        keras.metrics.Recall(thresholds=0.5, name="recall"),
+    ],
 )
 ```
 
-At inference time, OpenCV reads the webcam, takes a square region in the middle of the frame, feeds it to the model and draws every class whose probability is above a threshold (for example 0.5), together with its probability, on the video.
+Several classes can be present in one image, so the output uses `sigmoid` (an independent probability for each class) and `binary_crossentropy` instead of `softmax`.
+
+At inference time, OpenCV reads the webcam, resizes the frame to 224x224, feeds it to the model and writes on the video every class whose probability is above a threshold (for example 0.5). The model tells which objects are present, not where they are.
 
 > This section describes the plan and may change as the project moves forward.
 
@@ -424,7 +331,7 @@ Open the notebook and run the cells from top to bottom.
 - Train in WSL2 or Linux with an NVIDIA GPU. TensorFlow does not support GPUs on native Windows, but the trained model runs fine on the CPU there for the webcam demo.
 - Webcam access (`cv2.VideoCapture`) and `cv2.imshow` work best on native Windows or Linux, so run the live demo there.
 - Keep `~/fiftyone`, saved models (`.keras`) and `.env` files out of Git.
-- Plan for roughly 10 to 15 GB of free disk space for the metadata and the image cache.
+- Plan for roughly 10 GB of free disk space for the metadata and the image cache.
 - On WSL2, the default memory limit is half of your RAM. If WSL disconnects during the download, raise it in `C:\Users\<you>\.wslconfig` (for example `memory=11GB`) and run `wsl --shutdown`.
 
 ## 🙏 Acknowledgements
