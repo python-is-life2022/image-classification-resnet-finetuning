@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from keras import models
 
-model = models.load_model("C:/Users/amirm/webcam_resnet_transfer_learning/best_model_transfer_learning.keras")
+model = models.load_model("C:/Users/amirm/webcam_resnet_transfer_learning/best_fine_tuning_model_parameters.keras")
 
 LABELS = [
     "Mobile phone", "Laptop", "Computer keyboard", "Computer mouse",
