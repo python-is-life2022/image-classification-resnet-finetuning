@@ -30,7 +30,7 @@
   </tr>
 </table>
 
-> **Status:** work in progress. The dataset is downloaded and the multi-hot labels are ready; transfer learning, fine-tuning and the live webcam demo come next. The image counts above are unique images after merging duplicates (26,142 train and 2,673 validation images were downloaded, of which 22,388 and 2,093 are unique). The targets were 1,000 train and 300 validation images per class, but some classes have fewer images available.
+> **Status:** work in progress. The dataset is downloaded and the multi-hot labels are ready; the transfer learning head is trained; fine-tuning, the final evaluation and the live webcam demo come next. The image counts above are unique images after merging duplicates (26,142 train and 2,673 validation images were downloaded, of which 22,388 and 2,093 are unique). The targets were 1,000 train and 300 validation images per class, but some classes have fewer images available.
 
 ## 🧭 Pipeline
 
@@ -48,15 +48,15 @@ flowchart LR
     classDef done fill:#16a34a,stroke:#15803d,color:#fff;
     classDef wip fill:#f59e0b,stroke:#b45309,color:#fff;
     classDef todo fill:#334155,stroke:#475569,color:#e2e8f0;
-    class A,B,C,D,E done;
-    class F,G,H,I todo;
+    class A,B,C,D,E,F done;
+    class G,H,I todo;
 ```
 
 ## 📍 Roadmap
 
 <div align="center">
 
-`Progress ▰▰▰▰▰▰▰▱▱▱▱ 7 of 11 steps done`
+`Progress ▰▰▰▰▰▰▰▰▱▱▱ 8 of 11 steps done`
 
 <table align="center">
   <thead>
@@ -104,13 +104,13 @@ flowchart LR
     </tr>
     <tr>
       <td align="center">8</td>
-      <td>Transfer learning: input pipeline (tf.data) and a new sigmoid head on a frozen ResNet50</td>
-      <td align="center">🔜 Next</td>
+      <td>Transfer learning: input pipeline (tf.data), data augmentation and a new sigmoid head on a frozen ResNet50 (validation AUC 0.962)</td>
+      <td align="center">✅ Done</td>
     </tr>
     <tr>
       <td align="center">9</td>
       <td>Fine-tuning: unfreeze the top layers with a low learning rate</td>
-      <td align="center">📋 Planned</td>
+      <td align="center">🔜 Next</td>
     </tr>
     <tr>
       <td align="center">10</td>
@@ -353,24 +353,38 @@ The model starts from **ResNet50 pretrained on ImageNet** (`keras.applications`)
 
 | Phase | What is trained | Learning rate |
 |-------|-----------------|:-------------:|
-| **1. Transfer learning** | Only the new head (global average pooling, dropout, sigmoid layer). The ResNet50 backbone is frozen. | `1e-3` |
+| **1. Transfer learning** | Only the new head (global average pooling, a 512-unit dense layer, dropout, sigmoid layer). The ResNet50 backbone is frozen. | `1e-3` |
 | **2. Fine-tuning** | The last layers of ResNet50 are unfrozen and trained together with the head. BatchNorm layers stay frozen. | `1e-5` |
 
 ```python
 import keras
 from keras import layers
 
-base = keras.applications.ResNet50(weights="imagenet", include_top=False, input_shape=(224, 224, 3))
-base.trainable = False                                   # phase 1
+data_augmentation = keras.models.Sequential([
+    layers.RandomFlip("horizontal"),
+    layers.RandomRotation(0.1),
+    layers.RandomZoom(0.1),
+    layers.RandomTranslation(0.1, 0.1),
+    layers.RandomContrast(0.1),
+])
 
-inputs = keras.Input((224, 224, 3))
-x = keras.applications.resnet50.preprocess_input(inputs)
-x = base(x, training=False)
+base_model = keras.applications.ResNet50(weights="imagenet", include_top=False, input_shape=(224, 224, 3))
+base_model.trainable = False                             # phase 1
+
+inputs = keras.Input(shape=(224, 224, 3))
+x = data_augmentation(inputs)
+x = keras.applications.resnet50.preprocess_input(x)
+x = base_model(x)
 x = layers.GlobalAveragePooling2D()(x)
-x = layers.Dropout(0.3)(x)
+x = layers.Dense(512, activation="relu")(x)
+x = layers.Dropout(0.2)(x)
 outputs = layers.Dense(30, activation="sigmoid")(x)     # one probability per class
-model = keras.Model(inputs, outputs)
+model = keras.models.Model(inputs, outputs)
 ```
+
+- `data_augmentation` randomly flips, rotates, zooms, shifts and changes the contrast of the training images. It is only active during training.
+- The input goes through the augmentation, `preprocess_input` (the scaling ResNet50 was trained with) and the frozen ResNet50 backbone.
+- The head has `GlobalAveragePooling2D`, a `Dense(512, relu)` hidden layer, `Dropout(0.2)` and a `Dense(30, sigmoid)` output with one independent probability for each class.
 
 The task is multi-label, so the loss is `binary_crossentropy`. The metrics are AUC, precision and recall, because plain accuracy is misleading when most labels are `0`:
 
@@ -386,7 +400,31 @@ model.compile(
 
 At inference time, OpenCV reads the webcam, takes a square region in the middle of the frame, feeds it to the model and draws every class whose probability is above a threshold (for example 0.5), together with its probability, on the video.
 
-> This section describes the plan and may change as the project moves forward.
+### Train the head
+
+Only the new head is trained. The ResNet50 backbone stays frozen:
+
+```python
+history = model.fit(train_tf, validation_data=val_tf, epochs=5)
+```
+
+### Results of phase 1
+
+The model is evaluated on the training set and on the validation set (images it has never seen), with a threshold of 0.5:
+
+| Metric | Train | Validation |
+|--------|:-----:|:----------:|
+| Loss | 0.05 | 0.08 |
+| AUC | 0.987 | 0.962 |
+| Precision | 0.865 | 0.803 |
+| Recall | 0.692 | 0.578 |
+
+- The AUC is high on both sets, so the model ranks the classes well.
+- The gap between train and validation is small but visible (AUC 0.987 vs 0.962), a sign of mild overfitting.
+- The recall is low because the threshold is 0.5: the model misses many classes that are present. Lowering the threshold (for example to 0.3) raises the recall and lowers the precision.
+- During training the validation AUC stopped improving after about 3 epochs, so more epochs of the frozen head will not help much. The next step is fine-tuning.
+
+> Phase 1 is trained. Phase 2 (fine-tuning) is still a plan and may change as the project moves forward.
 
 ## 🚀 Quick start
 
