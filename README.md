@@ -378,8 +378,8 @@ x = data_augmentation(inputs)
 x = keras.applications.resnet50.preprocess_input(x)
 x = base_model(x)
 x = layers.GlobalAveragePooling2D()(x)
-x = layers.Dense(512, activation="relu")(x)
-x = layers.Dropout(0.2)(x)
+x = layers.Dense(256, activation="relu")(x)
+x = layers.Dropout(0.3)(x)
 outputs = layers.Dense(30, activation="sigmoid")(x)     # one probability per class
 model = keras.models.Model(inputs, outputs)
 ```
