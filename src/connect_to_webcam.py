@@ -18,8 +18,8 @@ LABELS = [
 THRESHOLD = 0.5
 
 lock = threading.Lock()
-latest_frame = None      # آخرین فریم دوربین
-latest_pred = None       # آخرین پیش‌بینی (۳۰ عدد)
+latest_frame = None      
+latest_pred = None       
 running = True
 
 def inference_loop():
@@ -36,13 +36,13 @@ def inference_loop():
         image = cv2.resize(rgb, (224, 224)).astype("float32")[None]
         pred = model(image, training=False).numpy()[0]
 
-        smooth = pred if smooth is None else 0.6 * smooth + 0.4 * pred   # لیبل‌ها نپرند
+        smooth = pred if smooth is None else 0.6 * smooth + 0.4 * pred  
         with lock:
             latest_pred = smooth
 
 threading.Thread(target=inference_loop, daemon=True).start()
 
-capture = cv2.VideoCapture(0, cv2.CAP_DSHOW)       # DSHOW روی ویندوز تأخیر کمتری دارد
+capture = cv2.VideoCapture(0, cv2.CAP_DSHOW)       
 if not capture.isOpened():
     capture = cv2.VideoCapture(1, cv2.CAP_DSHOW)
 capture.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
