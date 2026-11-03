@@ -50,15 +50,15 @@ flowchart LR
     classDef todo fill:#334155,stroke:#475569,color:#e2e8f0;
     class A,B,C,D,E,F done;
     class G done;
-    class H todo;
-    class I todo;
+    class H done;
+    class I wip;
 ```
 
 ## 📍 Roadmap
 
 <div align="center">
 
-`Progress ▰▰▰▰▰▰▰▰▰▱▱ 9 of 11 steps done`
+`Progress ▰▰▰▰▰▰▰▰▰▰▱ 10 of 11 steps done`
 
 <table align="center">
   <thead>
@@ -111,18 +111,18 @@ flowchart LR
     </tr>
     <tr>
       <td align="center">9</td>
-      <td>Fine-tuning: unfreeze the last 30 layers with a low learning rate (the validation AUC drops after the first epoch, see below)</td>
-      <td align="center">⏳ In progress</td>
+      <td>Fine-tuning: unfreeze the last 35 layers with a low learning rate, keep BatchNorm frozen, and use early stopping/checkpointing</td>
+      <td align="center">✅ Done</td>
     </tr>
     <tr>
       <td align="center">10</td>
       <td>Evaluate (AUC, precision and recall per class)</td>
-      <td align="center">📋 Planned</td>
+      <td align="center">✅ Done</td>
     </tr>
     <tr>
       <td align="center">11</td>
       <td>Live webcam demo with OpenCV</td>
-      <td align="center">📋 Planned</td>
+      <td align="center">⏳ In progress</td>
     </tr>
   </tbody>
 </table>
