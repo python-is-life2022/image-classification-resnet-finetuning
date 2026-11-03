@@ -30,7 +30,7 @@
   </tr>
 </table>
 
-> **Status:** work in progress. The dataset is downloaded and the multi-hot labels are ready; the transfer learning head is trained; fine-tuning, the final evaluation and the live webcam demo come next. The image counts above are unique images after merging duplicates (26,142 train and 2,673 validation images were downloaded, of which 22,388 and 2,093 are unique). The targets were 1,000 train and 300 validation images per class, but some classes have fewer images available.
+> **Status:** work in progress. The dataset is downloaded and the multi-hot labels are ready; the transfer learning head is trained and fine-tuning is running (it starts to overfit, see below); the final evaluation and the live webcam demo come next. The image counts above are unique images after merging duplicates (26,142 train and 2,673 validation images were downloaded, of which 22,388 and 2,093 are unique). The targets were 1,000 train and 300 validation images per class, but some classes have fewer images available.
 
 ## 🧭 Pipeline
 
@@ -49,7 +49,8 @@ flowchart LR
     classDef wip fill:#f59e0b,stroke:#b45309,color:#fff;
     classDef todo fill:#334155,stroke:#475569,color:#e2e8f0;
     class A,B,C,D,E,F done;
-    class G,H,I todo;
+    class G wip;
+    class H,I todo;
 ```
 
 ## 📍 Roadmap
@@ -109,8 +110,8 @@ flowchart LR
     </tr>
     <tr>
       <td align="center">9</td>
-      <td>Fine-tuning: unfreeze the top layers with a low learning rate</td>
-      <td align="center">🔜 Next</td>
+      <td>Fine-tuning: unfreeze the last 30 layers with a low learning rate (the validation AUC drops after the first epoch, see below)</td>
+      <td align="center">⏳ In progress</td>
     </tr>
     <tr>
       <td align="center">10</td>
@@ -354,7 +355,7 @@ The model starts from **ResNet50 pretrained on ImageNet** (`keras.applications`)
 | Phase | What is trained | Learning rate |
 |-------|-----------------|:-------------:|
 | **1. Transfer learning** | Only the new head (global average pooling, a 512-unit dense layer, dropout, sigmoid layer). The ResNet50 backbone is frozen. | `1e-3` |
-| **2. Fine-tuning** | The last layers of ResNet50 are unfrozen and trained together with the head. BatchNorm layers stay frozen. | `1e-5` |
+| **2. Fine-tuning** | The last 30 layers of ResNet50 are unfrozen and trained together with the head. BatchNorm layers stay frozen. | `1e-5` |
 
 ```python
 import keras
@@ -434,7 +435,54 @@ The curves show the AUC and the loss after each epoch of phase 1, for the traini
 - The validation AUC is highest after the second epoch (about 0.971) and then drops to about 0.962, while the validation loss reaches its minimum at the same epoch (about 0.074) and then rises slightly.
 - The training and validation curves move apart after the second epoch, a sign that the model starts to overfit. This is why training the frozen head for more epochs would not help.
 
-> Phase 1 is trained. Phase 2 (fine-tuning) is still a plan and may change as the project moves forward.
+### Fine-tuning
+
+In phase 2 the last 30 layers of the backbone are unfrozen. The model is compiled again with a learning rate 100 times smaller, and the training continues from the epoch where phase 1 stopped:
+
+```python
+base_model.trainable = True
+for layer in base_model.layers[:-30]:                    # only the last 30 layers are trained
+    layer.trainable = False
+for layer in base_model.layers:                          # BatchNorm layers stay frozen
+    if isinstance(layer, layers.BatchNormalization):
+        layer.trainable = False
+
+model.compile(
+    loss=keras.losses.binary_crossentropy,
+    optimizer=keras.optimizers.Adam(learning_rate=1e-5),
+    metrics=[keras.metrics.AUC(multi_label=True, name="auc"),
+             keras.metrics.Precision(name="precision"),
+             keras.metrics.Recall(name="recall")],
+)
+
+base_epoch = his.epoch[-1] + 1                           # 5
+fine_tune_epoch = 10
+main_epoch = base_epoch + fine_tune_epoch                # 15
+
+fine_his = model.fit(train_tf, validation_data=val_tf, epochs=main_epoch, initial_epoch=base_epoch)
+```
+
+- `initial_epoch=base_epoch` continues the epoch numbering of phase 1, so phase 2 runs from epoch 6 to 15.
+- `compile` does not reset the weights, only the state of the optimizer.
+- `fine_his` has the history of phase 2 only. It is joined with `his.history` to plot both phases.
+
+### Results of fine-tuning
+
+Selected epochs (the validation metrics use a threshold of 0.5):
+
+| Epoch | Train AUC | Train loss | Val AUC | Val loss | Val precision | Val recall |
+|-------|:---------:|:----------:|:-------:|:--------:|:-------------:|:----------:|
+| 5 (end of phase 1) | 0.980 | 0.058 | 0.962 | 0.079 | 0.803 | 0.578 |
+| 6 (first fine-tuning epoch) | 0.987 | 0.048 | 0.965 | 0.080 | 0.811 | 0.579 |
+| 9 | 0.996 | 0.026 | 0.954 | 0.091 | 0.799 | 0.608 |
+| 12 | 0.999 | 0.015 | 0.944 | 0.109 | 0.796 | 0.612 |
+
+- The training AUC rises to 0.999 and the training loss falls to 0.015, but the validation AUC falls from 0.965 to 0.944 and the validation loss rises from 0.080 to 0.109. The unfrozen layers start to memorize the training images: the model overfits.
+- Fine-tuning gave no real gain: the best validation AUC of phase 2 is the first epoch (0.965), only slightly above the end of phase 1 (0.962) and below the best epoch of phase 1 (about 0.971).
+- The validation recall rises a little (0.579 to 0.612) while the precision falls a little (0.811 to 0.796), so the model becomes slightly less strict.
+- Things to try next: `EarlyStopping` with `restore_best_weights=True`, unfreezing fewer layers (for example the last 10 to 15), or keeping the model of phase 1.
+
+> Phase 1 is trained. Phase 2 (fine-tuning) is running and its results may change as the project moves forward.
 
 ## 🚀 Quick start
 
