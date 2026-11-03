@@ -424,6 +424,16 @@ The model is evaluated on the training set and on the validation set (images it 
 - The recall is low because the threshold is 0.5: the model misses many classes that are present. Lowering the threshold (for example to 0.3) raises the recall and lowers the precision.
 - During training the validation AUC stopped improving after about 3 epochs, so more epochs of the frozen head will not help much. The next step is fine-tuning.
 
+### Learning curves
+
+The curves show the AUC and the loss after each epoch of phase 1, for the training and the validation set:
+
+<img src="assets/transfer_learning_curves.png" alt="Transfer learning curves: AUC and loss of the training and validation sets" width="100%">
+
+- The training AUC keeps rising (about 0.942 to 0.980) and the training loss keeps falling.
+- The validation AUC is highest after the second epoch (about 0.971) and then drops to about 0.962, while the validation loss reaches its minimum at the same epoch (about 0.074) and then rises slightly.
+- The training and validation curves move apart after the second epoch, a sign that the model starts to overfit. This is why training the frozen head for more epochs would not help.
+
 > Phase 1 is trained. Phase 2 (fine-tuning) is still a plan and may change as the project moves forward.
 
 ## 🚀 Quick start
@@ -448,7 +458,8 @@ Open the notebook and run the cells from top to bottom.
 ```text
 .
 ├── assets/
-│   └── banner.svg
+│   ├── banner.svg
+│   └── transfer_learning_curves.png
 ├── src/
 │   └── connect_to_webcam.py   # live webcam script (OpenCV)
 ├── .gitignore
